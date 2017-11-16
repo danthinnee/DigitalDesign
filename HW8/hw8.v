@@ -82,7 +82,8 @@ module ControlUnit(input[5:0] opcode,
 		output reg[2:0] alu_op,
 		output reg branch,
 		output reg mem_write,
-		output reg mem_to_reg);
+		output reg mem_to_reg,
+		output reg immextend);
 
 	always @(opcode, funct) begin
 		
@@ -109,37 +110,42 @@ module ControlUnit(input[5:0] opcode,
 				branch = 0;
 				mem_write = 0;
 				mem_to_reg = 0;
-			
+				immextend = 0;
 				// ALU operation depends on funct
 				case (funct)
 
 					// add
 					6'h20: begin
 						alu_op = 3'b010;
+						immextend = 0;
 						$display("\tInstruction 'add'");
 					end
 
 					// sub
 					6'h22: begin
 						alu_op = 3'b110;
+						immextend = 0;
 						$display("\tInstruction 'sub'");
 					end
 
 					// slt
 					6'h2a: begin
 						alu_op = 3'b111;
+						immextend = 0;
 						$display("\tInstruction 'slt'");
 					end
 
 					// and
 					6'h24: begin
 						alu_op = 3'b000;
+						immextend = 0;
 						$display("\tInstruction 'and'");
 					end
 
 					// or
 					6'h25: begin
 						alu_op = 3'b001;
+						immextend = 0;
 						$display("\tInstruction 'or'");
 					end
 				endcase
@@ -154,6 +160,7 @@ module ControlUnit(input[5:0] opcode,
 				branch = 0;
 				mem_write = 0;
 				mem_to_reg = 1;
+				immextend = 0;
 				$display("\tInstruction 'lw'");
 			end
 
@@ -164,6 +171,7 @@ module ControlUnit(input[5:0] opcode,
 				alu_op = 3'b010;
 				branch = 0;
 				mem_write = 1;
+				immextend = 0;
 				$display("\tInstruction 'sw'");
 			end
 
@@ -174,7 +182,34 @@ module ControlUnit(input[5:0] opcode,
 				alu_op = 3'b110;
 				branch = 1;
 				mem_write = 0;
+				immextend = 0;
 				$display("\tInstruction 'beq'");
+			end
+
+			// addi
+			6'h08: begin
+                               	reg_dst = 0;
+				reg_write = 1;
+                                alu_src = 1;
+                                alu_op = 3'b010;
+                                branch = 0;
+                                mem_write = 0;
+				mem_to_reg = 0;
+				immextend = 0;
+                                $display("\tInstruction 'addi'");
+                        end
+
+			// ori
+			6'h0d: begin
+				reg_dst = 0;
+                                reg_write = 1;
+                                alu_src = 1;
+                                alu_op = 3'b001;
+                                branch = 0;
+                                mem_write = 0;
+                                mem_to_reg = 0;
+				immextend = 1;
+				$display("\tInstruction 'ori'");	
 			end
 		endcase
 	end
@@ -330,15 +365,20 @@ module Datapath(input clock,
 	assign register_file_write_data = data_memory_mux_out;
 
 	// SignExtend
-	wire[15:0] sign_extend_in;
+	wire[15:0] extend_in;
 	wire[31:0] sign_extend_out;
+	wire[31:0] zero_extend_out;
 	SignExtend sign_extend(
-			sign_extend_in,
+			extend_in,
 			sign_extend_out);
+	ZeroExtend zero_extend(extend_in, zero_extend_out);
 	
+	wire[31:0] immextend_mux_out;
+	wire immextend_mux_sel;
+	Mux32Bit2To1 immextend_mux(sign_extend_out, zero_extend_out, immextend_mux_sel, immextend_mux_out);
 	// Connections for SignExtend
-	assign sign_extend_in = instruction_memory_instr[15:0];
-	assign alu_mux_in1 = sign_extend_out;
+	assign extend_in = instruction_memory_instr[15:0];
+	assign alu_mux_in1 = immextend_mux_out;
 	
 	// ShiftLeft
 	wire[31:0] shift_left_in;
@@ -348,7 +388,7 @@ module Datapath(input clock,
 			shift_left_out);
 	
 	// Connections for ShiftLeft
-	assign shift_left_in = sign_extend_out;
+	assign shift_left_in = immextend_mux_out;
 
 	// Adder
 	wire[31:0] adder_op1;
@@ -385,6 +425,7 @@ module Datapath(input clock,
 	wire control_unit_branch;
 	wire control_unit_mem_write;
 	wire control_unit_mem_to_reg;
+	wire control_unit_immextend;
 	ControlUnit control_unit(
 			control_unit_opcode,
 			control_unit_funct,
@@ -394,7 +435,8 @@ module Datapath(input clock,
 			control_unit_alu_op,
 			control_unit_branch,
 			control_unit_mem_write,
-			control_unit_mem_to_reg);
+			control_unit_mem_to_reg,
+			control_unit_immextend);
 	
 	// Connections for control unit
 	assign control_unit_opcode = instruction_memory_instr[31:26];
@@ -406,6 +448,7 @@ module Datapath(input clock,
 	assign and_gate_in1 = control_unit_branch;
 	assign data_memory_write = control_unit_mem_write;
 	assign data_memory_mux_sel = control_unit_mem_to_reg;
+	assign immextend_mux_sel = control_unit_immextend;
 
 endmodule
 
@@ -425,7 +468,7 @@ module InstructionMemory(input clock,
 				content[i] = 0;
 
 			// Initial values
-			content[0] = 32'h00221820;	// add $3, $1, $2  <- label 'main'
+			/*content[0] = 32'h00221820;	// add $3, $1, $2  <- label 'main'
 			content[1] = 32'h00221822;	// sub $3, $1, $2
 			content[2] = 32'h00221824;	// and $3, $1, $2
 			content[3] = 32'h00221825;	// or $3, $1, $2
@@ -435,7 +478,12 @@ module InstructionMemory(input clock,
 			content[7] = 32'h8d430000;	// lw $3, 0($10)
 			content[8] = 32'h8d430004;	// lw $3, 4($10)
 			content[9] = 32'had430008;	// sw $3, 8($10)
-			content[10] = 32'h1000fff5;	// beq $0, $0, main
+			content[10] = 32'h1000fff5;	// beq $0, $0, main */
+
+			content[0] = 32'h22000001;      // addi $s0, $zero, 0x1
+                        content[1] = 32'h36108000;      // ori $s0, $s0, 0x8000
+                        content[2] = 32'h2210ffff;      // addi $s0, $s0, -1
+
 		end
 
 	// Read instruction
@@ -528,6 +576,9 @@ module SignExtend(input[15:0] in,
 
 endmodule
 
+module ZeroExtend(input[15:0] in, output[31:0] out);
+	assign out = {{16'b0},in};
+endmodule
 // This is the test-bench for the single-cycle datapath supporting instructions
 // add, sub, slt, and, or, lw, sw, beq. When sequential logic components are
 // sent an asynchronous reset signal (clear), their content is set to the
