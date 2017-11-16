@@ -36,7 +36,8 @@ module MagnitudeComparator_tb();
 			b = 4'd10;
 
 			#10
-			a = -4'd14;
-			b = -4'd10;
+			a = 8'd242;
+			b = 8'd246;
 	end
 endmodule
+

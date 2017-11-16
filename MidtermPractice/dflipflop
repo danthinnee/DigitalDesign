@@ -1,0 +1,85 @@
+#! /COEnet/Linux/verilog/bin/vvp
+:ivl_version "10.1 (stable)" "(v10_1_1)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "system";
+:vpi_module "vhdl_sys";
+:vpi_module "v2005_math";
+:vpi_module "va_math";
+S_0x92e100 .scope module, "dff_tb" "dff_tb" 2 11;
+ .timescale 0 0;
+v0x9412f0_0 .var "clk", 0 0;
+v0x9413b0_0 .var "clr", 0 0;
+v0x941480_0 .var "en", 0 0;
+v0x941580_0 .var "x", 3 0;
+v0x941650_0 .net "y", 3 0, v0x941120_0;  1 drivers
+S_0x92e280 .scope module, "dff1" "dff" 2 16, 2 1 0, S_0x92e100;
+ .timescale 0 0;
+    .port_info 0 /INPUT 4 "x"
+    .port_info 1 /INPUT 1 "en"
+    .port_info 2 /INPUT 1 "clk"
+    .port_info 3 /INPUT 1 "clr"
+    .port_info 4 /OUTPUT 4 "y"
+v0x92c720_0 .net "clk", 0 0, v0x9412f0_0;  1 drivers
+v0x940eb0_0 .net "clr", 0 0, v0x9413b0_0;  1 drivers
+v0x940f70_0 .net "en", 0 0, v0x941480_0;  1 drivers
+v0x941040_0 .net "x", 3 0, v0x941580_0;  1 drivers
+v0x941120_0 .var "y", 3 0;
+E_0x92ea60/0 .event negedge, v0x92c720_0;
+E_0x92ea60/1 .event posedge, v0x940eb0_0;
+E_0x92ea60 .event/or E_0x92ea60/0, E_0x92ea60/1;
+    .scope S_0x92e280;
+T_0 ;
+    %wait E_0x92ea60;
+    %load/vec4 v0x940eb0_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_0.0, 8;
+    %pushi/vec4 0, 0, 4;
+    %store/vec4 v0x941120_0, 0, 4;
+    %jmp T_0.1;
+T_0.0 ;
+    %load/vec4 v0x941040_0;
+    %store/vec4 v0x941120_0, 0, 4;
+T_0.1 ;
+    %jmp T_0;
+    .thread T_0;
+    .scope S_0x92e100;
+T_1 ;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x9413b0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x9413b0_0, 0, 1;
+    %end;
+    .thread T_1;
+    .scope S_0x92e100;
+T_2 ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x9412f0_0, 0, 1;
+T_2.0 ;
+    %delay 5, 0;
+    %load/vec4 v0x9412f0_0;
+    %inv;
+    %store/vec4 v0x9412f0_0, 0, 1;
+    %jmp T_2.0;
+    %end;
+    .thread T_2;
+    .scope S_0x92e100;
+T_3 ;
+    %vpi_call 2 29 "$monitor", "%d %d %b %b %b %d", $time, v0x941580_0, v0x941480_0, v0x9412f0_0, v0x9413b0_0, v0x941650_0 {0 0 0};
+    %delay 10, 0;
+    %pushi/vec4 8, 0, 4;
+    %store/vec4 v0x941580_0, 0, 4;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x941480_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 4;
+    %store/vec4 v0x941580_0, 0, 4;
+    %vpi_call 2 36 "$finish" {0 0 0};
+    %end;
+    .thread T_3;
+# The file index is used to find the file name in the following table.
+:file_names 3;
+    "N/A";
+    "<interactive>";
+    "dflipflop.v";
